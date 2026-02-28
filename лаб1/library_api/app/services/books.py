@@ -15,8 +15,8 @@ class BooksService:
         self,
         status: Optional[BookStatus] = None,
         author: Optional[str] = None,
-        sort_by: Optional[str] = None,   # "title" | "year"
-        order: str = "asc",              # "asc" | "desc"
+        sort_by: Optional[str] = None,  
+        order: str = "asc",              
     ) -> List[Dict]:
         books = list(await self.repo.list_books())
 
@@ -24,7 +24,6 @@ class BooksService:
             books = [b for b in books if b["status"] == status.value]
 
         if author is not None:
-            # простий case-insensitive exact match; можна змінити на contains
             a = author.strip().lower()
             books = [b for b in books if b["author"].strip().lower() == a]
 
@@ -42,7 +41,7 @@ class BooksService:
 
     async def create_book(self, payload: BookCreate) -> Dict:
         book = payload.model_dump()
-        book["id"] = str(uuid4())  # UUID генеруємо автоматично
+        book["id"] = str(uuid4())  
         return await self.repo.add(book)
 
     async def delete_book(self, book_id: UUID) -> bool:

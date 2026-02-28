@@ -42,6 +42,5 @@ async def create_book(payload: BookCreate):
 
 @router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_book(book_id: UUID):
-    # Ідемпотентний DELETE: 204 і якщо видалили, і якщо вже не існує
     await service.delete_book(book_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

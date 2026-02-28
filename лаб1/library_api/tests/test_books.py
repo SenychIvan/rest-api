@@ -37,7 +37,7 @@ async def test_create_and_get_by_id():
 
         data = r.json()
         assert "id" in data
-        UUID(data["id"])  # перевірка що це валідний UUID
+        UUID(data["id"])  
 
         book_id = data["id"]
 
@@ -87,7 +87,6 @@ async def test_filter_and_sort():
             "year": 2010
         })
 
-        # фільтр по автору + статусу + сортування
         r = await ac.get(
             "/books",
             params={
@@ -103,7 +102,6 @@ async def test_filter_and_sort():
         assert len(items) == 1
         assert items[0]["title"] == "A Book"
 
-        # перевірка сортування по року
         r2 = await ac.get("/books", params={"sort_by": "year", "order": "desc"})
         years = [x["year"] for x in r2.json()]
         assert years == sorted(years, reverse=True)
@@ -128,6 +126,5 @@ async def test_delete_idempotent():
         d1 = await ac.delete(f"/books/{book_id}")
         assert d1.status_code == 204
 
-        # повторний delete (ідемпотентність)
         d2 = await ac.delete(f"/books/{book_id}")
         assert d2.status_code == 204
