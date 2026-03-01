@@ -1,36 +1,52 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-from uuid import UUID
+from typing import Optional, Sequence
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.storage import BOOKS
+from app.models.book import Book
+from app.schemas.book import BookCreate, BookStatus
 
 
 class BooksRepository:
-    async def list_books(self) -> List[Dict]:
-        return BOOKS
+    async def list_books(
+        self,
+        session: AsyncSession,
+        status: Optional[BookStatus],
+        author: Optional[str],
+        sort_by: Optional[str],
+        order: str,
+        limit: int,
+        offset: int,
+    ) -> Sequence[Book]:
+        stmt = select(Book)
 
-    async def get_by_id(self, book_id: UUID) -> Optional[Dict]:
-        for b in BOOKS:
-            if b["id"] == str(book_id):
-                return b
-        return None
+        if status is not None:
+            stmt = stmt.where(Book.status == status.value)
 
-    async def add(self, book: Dict) -> Dict:
-        BOOKS.append(book)
+        if author is not None:
+            stmt = stmt.where(Book.author.ilike(author))
+
+        if sort_by in {"title", "year"}:
+            col = Book.title if sort_by == "title" else Book.year
+            stmt = stmt.order_by(col.desc() if order == "desc" else col.asc())
+
+        stmt = stmt.limit(limit).offset(offset)
+        res = await session.execute(stmt)
+        return res.scalars().all()
+
+    async def get_by_id(self, session: AsyncSession, book_id: str) -> Optional[Book]:
+        res = await session.execute(select(Book).where(Book.id == book_id))
+        return res.scalar_one_or_none()
+
+    async def add(self, session: AsyncSession, payload: BookCreate) -> Book:
+        book = Book(**payload.model_dump())
+        session.add(book)
+        await session.commit()
+        await session.refresh(book)
         return book
 
-    async def delete(self, book_id: UUID) -> bool:
-        """
-        Повертає True якщо видалили, False якщо не знайшли.
-        DELETE робитимемо ідемпотентним на рівні API (204 в обох випадках).
-        """
-        idx_to_delete = None
-        for i, b in enumerate(BOOKS):
-            if b["id"] == str(book_id):
-                idx_to_delete = i
-                break
-        if idx_to_delete is None:
-            return False
-        BOOKS.pop(idx_to_delete)
-        return True
+    async def delete(self, session: AsyncSession, book_id: str) -> bool:
+        res = await session.execute(delete(Book).where(Book.id == book_id))
+        await session.commit()
+        return (res.rowcount or 0) > 0

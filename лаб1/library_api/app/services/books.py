@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-from uuid import UUID, uuid4
+from typing import Optional, Sequence
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository.books_repo import BooksRepository
 from app.schemas.book import BookCreate, BookStatus
+from app.models.book import Book
 
 
 class BooksService:
@@ -13,36 +14,29 @@ class BooksService:
 
     async def list_books(
         self,
+        session: AsyncSession,
         status: Optional[BookStatus] = None,
         author: Optional[str] = None,
-        sort_by: Optional[str] = None,  
-        order: str = "asc",              
-    ) -> List[Dict]:
-        books = list(await self.repo.list_books())
+        sort_by: Optional[str] = None,
+        order: str = "asc",
+        limit: int = 10,
+        offset: int = 0,
+    ) -> Sequence[Book]:
+        return await self.repo.list_books(
+            session=session,
+            status=status,
+            author=author,
+            sort_by=sort_by,
+            order=order,
+            limit=limit,
+            offset=offset,
+        )
 
-        if status is not None:
-            books = [b for b in books if b["status"] == status.value]
+    async def get_book(self, session: AsyncSession, book_id: str) -> Optional[Book]:
+        return await self.repo.get_by_id(session, book_id)
 
-        if author is not None:
-            a = author.strip().lower()
-            books = [b for b in books if b["author"].strip().lower() == a]
+    async def create_book(self, session: AsyncSession, payload: BookCreate) -> Book:
+        return await self.repo.add(session, payload)
 
-        if sort_by in {"title", "year"}:
-            reverse = (order == "desc")
-            if sort_by == "title":
-                books.sort(key=lambda x: (x["title"] or "").lower(), reverse=reverse)
-            else:
-                books.sort(key=lambda x: x["year"], reverse=reverse)
-
-        return books
-
-    async def get_book(self, book_id: UUID) -> Optional[Dict]:
-        return await self.repo.get_by_id(book_id)
-
-    async def create_book(self, payload: BookCreate) -> Dict:
-        book = payload.model_dump()
-        book["id"] = str(uuid4())  
-        return await self.repo.add(book)
-
-    async def delete_book(self, book_id: UUID) -> bool:
-        return await self.repo.delete(book_id)
+    async def delete_book(self, session: AsyncSession, book_id: str) -> bool:
+        return await self.repo.delete(session, book_id)
