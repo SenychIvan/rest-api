@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from enum import Enum
-from uuid import UUID
+from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 
 class BookStatus(str, Enum):
-    available = "available"  
-    issued = "issued"     
+    available = "available"
+    issued = "issued"
 
 
 class BookCreate(BaseModel):
@@ -20,5 +20,9 @@ class BookCreate(BaseModel):
 
 class BookOut(BookCreate):
     model_config = ConfigDict(from_attributes=True)
+    id: str
 
-    id: UUID
+
+class BookListResponse(BaseModel):
+    items: List[BookOut]
+    next_cursor: Optional[str] = None

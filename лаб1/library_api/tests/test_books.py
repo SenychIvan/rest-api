@@ -21,8 +21,7 @@ async def test_create_and_get(client):
 
 
 @pytest.mark.anyio
-async def test_limit_offset_pagination(client):
-    # додаємо 5 книг
+async def test_cursor_pagination(client):
     for i in range(5):
         await client.post("/books", json={
             "title": f"Book {i}",
@@ -32,13 +31,23 @@ async def test_limit_offset_pagination(client):
             "year": 2000 + i
         })
 
-    r1 = await client.get("/books", params={"limit": 2, "offset": 0})
+    r1 = await client.get("/books", params={"limit": 2})
     assert r1.status_code == 200
-    assert len(r1.json()) == 2
 
-    r2 = await client.get("/books", params={"limit": 2, "offset": 4})
+    data1 = r1.json()
+    assert "items" in data1
+    assert "next_cursor" in data1
+    assert len(data1["items"]) == 2
+    assert data1["next_cursor"] is not None
+
+    r2 = await client.get("/books", params={
+        "limit": 2,
+        "cursor": data1["next_cursor"]
+    })
     assert r2.status_code == 200
-    assert len(r2.json()) == 1
+
+    data2 = r2.json()
+    assert len(data2["items"]) == 2
 
 
 @pytest.mark.anyio

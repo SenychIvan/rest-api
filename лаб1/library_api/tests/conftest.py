@@ -42,7 +42,6 @@ async def session(test_engine):
     )
 
     async with SessionLocal() as s:
-        # ✅ очищаємо таблицю перед кожним тестом
         await s.execute(delete(Book))
         await s.commit()
         yield s

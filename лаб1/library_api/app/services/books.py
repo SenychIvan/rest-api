@@ -20,7 +20,7 @@ class BooksService:
         sort_by: Optional[str] = None,
         order: str = "asc",
         limit: int = 10,
-        offset: int = 0,
+        cursor: Optional[str] = None,
     ) -> Sequence[Book]:
         return await self.repo.list_books(
             session=session,
@@ -29,7 +29,7 @@ class BooksService:
             sort_by=sort_by,
             order=order,
             limit=limit,
-            offset=offset,
+            cursor=cursor,
         )
 
     async def get_book(self, session: AsyncSession, book_id: str) -> Optional[Book]:

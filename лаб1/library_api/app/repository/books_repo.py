@@ -17,7 +17,7 @@ class BooksRepository:
         sort_by: Optional[str],
         order: str,
         limit: int,
-        offset: int,
+        cursor: Optional[str],
     ) -> Sequence[Book]:
         stmt = select(Book)
 
@@ -27,11 +27,13 @@ class BooksRepository:
         if author is not None:
             stmt = stmt.where(Book.author.ilike(author))
 
-        if sort_by in {"title", "year"}:
-            col = Book.title if sort_by == "title" else Book.year
-            stmt = stmt.order_by(col.desc() if order == "desc" else col.asc())
+        # Для cursor pagination робимо стабільне сортування по id
+        # sort_by/order лишаємо в API як сумісність, але для курсора
+        # основна логіка йде по id.
+        if cursor:
+            stmt = stmt.where(Book.id > cursor)
 
-        stmt = stmt.limit(limit).offset(offset)
+        stmt = stmt.order_by(Book.id.asc()).limit(limit)
         res = await session.execute(stmt)
         return res.scalars().all()
 
