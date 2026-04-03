@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
+from motor.motor_asyncio import AsyncIOMotorCollection
 
 from app.repository.books_repo import BooksRepository
 from app.schemas.book import BookCreate, BookStatus
-from app.models.book import Book
 
 
 class BooksService:
@@ -14,16 +13,16 @@ class BooksService:
 
     async def list_books(
         self,
-        session: AsyncSession,
+        collection: AsyncIOMotorCollection,
         status: Optional[BookStatus] = None,
         author: Optional[str] = None,
         sort_by: Optional[str] = None,
         order: str = "asc",
         limit: int = 10,
         offset: int = 0,
-    ) -> Sequence[Book]:
+    ):
         return await self.repo.list_books(
-            session=session,
+            collection=collection,
             status=status,
             author=author,
             sort_by=sort_by,
@@ -32,11 +31,11 @@ class BooksService:
             offset=offset,
         )
 
-    async def get_book(self, session: AsyncSession, book_id: str) -> Optional[Book]:
-        return await self.repo.get_by_id(session, book_id)
+    async def get_book(self, collection: AsyncIOMotorCollection, book_id: str):
+        return await self.repo.get_by_id(collection, book_id)
 
-    async def create_book(self, session: AsyncSession, payload: BookCreate) -> Book:
-        return await self.repo.add(session, payload)
+    async def create_book(self, collection: AsyncIOMotorCollection, payload: BookCreate):
+        return await self.repo.add(collection, payload)
 
-    async def delete_book(self, session: AsyncSession, book_id: str) -> bool:
-        return await self.repo.delete(session, book_id)
+    async def delete_book(self, collection: AsyncIOMotorCollection, book_id: str):
+        return await self.repo.delete(collection, book_id)

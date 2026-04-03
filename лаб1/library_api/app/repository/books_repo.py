@@ -1,52 +1,88 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
-from sqlalchemy import select, delete
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
+from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorCollection
 
-from app.models.book import Book
 from app.schemas.book import BookCreate, BookStatus
 
 
 class BooksRepository:
+    @staticmethod
+    def _serialize(book: dict) -> dict:
+        return {
+            "id": str(book["_id"]),
+            "title": book["title"],
+            "author": book["author"],
+            "description": book["description"],
+            "status": book["status"],
+            "year": book["year"],
+        }
+
     async def list_books(
         self,
-        session: AsyncSession,
+        collection: AsyncIOMotorCollection,
         status: Optional[BookStatus],
         author: Optional[str],
         sort_by: Optional[str],
         order: str,
         limit: int,
         offset: int,
-    ) -> Sequence[Book]:
-        stmt = select(Book)
+    ) -> tuple[list[dict], int]:
+        query = {}
 
         if status is not None:
-            stmt = stmt.where(Book.status == status.value)
+            query["status"] = status.value
 
         if author is not None:
-            stmt = stmt.where(Book.author.ilike(author))
+            query["author"] = author
 
-        if sort_by in {"title", "year"}:
-            col = Book.title if sort_by == "title" else Book.year
-            stmt = stmt.order_by(col.desc() if order == "desc" else col.asc())
+        sort_direction = 1 if order == "asc" else -1
+        sort_field = sort_by if sort_by in {"title", "year"} else "_id"
 
-        stmt = stmt.limit(limit).offset(offset)
-        res = await session.execute(stmt)
-        return res.scalars().all()
+        total = await collection.count_documents(query)
 
-    async def get_by_id(self, session: AsyncSession, book_id: str) -> Optional[Book]:
-        res = await session.execute(select(Book).where(Book.id == book_id))
-        return res.scalar_one_or_none()
+        cursor = (
+            collection.find(query)
+            .sort(sort_field, sort_direction)
+            .skip(offset)
+            .limit(limit)
+        )
 
-    async def add(self, session: AsyncSession, payload: BookCreate) -> Book:
-        book = Book(**payload.model_dump())
-        session.add(book)
-        await session.commit()
-        await session.refresh(book)
-        return book
+        books = [self._serialize(book) async for book in cursor]
+        return books, total
 
-    async def delete(self, session: AsyncSession, book_id: str) -> bool:
-        res = await session.execute(delete(Book).where(Book.id == book_id))
-        await session.commit()
-        return (res.rowcount or 0) > 0
+    async def get_by_id(
+        self,
+        collection: AsyncIOMotorCollection,
+        book_id: str,
+    ) -> Optional[dict]:
+        if not ObjectId.is_valid(book_id):
+            return None
+
+        book = await collection.find_one({"_id": ObjectId(book_id)})
+        if book is None:
+            return None
+
+        return self._serialize(book)
+
+    async def add(
+        self,
+        collection: AsyncIOMotorCollection,
+        payload: BookCreate,
+    ) -> dict:
+        book_data = payload.model_dump()
+        result = await collection.insert_one(book_data)
+        created = await collection.find_one({"_id": result.inserted_id})
+        return self._serialize(created)
+
+    async def delete(
+        self,
+        collection: AsyncIOMotorCollection,
+        book_id: str,
+    ) -> bool:
+        if not ObjectId.is_valid(book_id):
+            return False
+
+        result = await collection.delete_one({"_id": ObjectId(book_id)})
+        return result.deleted_count > 0
