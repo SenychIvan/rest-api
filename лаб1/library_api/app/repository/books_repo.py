@@ -14,8 +14,6 @@ class BooksRepository:
         session: AsyncSession,
         status: Optional[BookStatus],
         author: Optional[str],
-        sort_by: Optional[str],
-        order: str,
         limit: int,
         cursor: Optional[str],
     ) -> Sequence[Book]:
@@ -25,15 +23,13 @@ class BooksRepository:
             stmt = stmt.where(Book.status == status.value)
 
         if author is not None:
-            stmt = stmt.where(Book.author.ilike(author))
+            stmt = stmt.where(Book.author.ilike(f"%{author}%"))
 
-        # Для cursor pagination робимо стабільне сортування по id
-        # sort_by/order лишаємо в API як сумісність, але для курсора
-        # основна логіка йде по id.
         if cursor:
             stmt = stmt.where(Book.id > cursor)
 
         stmt = stmt.order_by(Book.id.asc()).limit(limit)
+
         res = await session.execute(stmt)
         return res.scalars().all()
 

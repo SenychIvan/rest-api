@@ -17,8 +17,6 @@ class BooksService:
         session: AsyncSession,
         status: Optional[BookStatus] = None,
         author: Optional[str] = None,
-        sort_by: Optional[str] = None,
-        order: str = "asc",
         limit: int = 10,
         cursor: Optional[str] = None,
     ) -> Sequence[Book]:
@@ -26,8 +24,6 @@ class BooksService:
             session=session,
             status=status,
             author=author,
-            sort_by=sort_by,
-            order=order,
             limit=limit,
             cursor=cursor,
         )

@@ -18,8 +18,6 @@ async def get_books(
     session: AsyncSession = Depends(get_session),
     status_: Optional[BookStatus] = Query(default=None, alias="status"),
     author: Optional[str] = Query(default=None),
-    sort_by: Optional[str] = Query(default=None),
-    order: str = Query(default="asc"),
     limit: int = Query(default=10, ge=1, le=100),
     cursor: Optional[str] = Query(default=None),
 ):
@@ -27,13 +25,11 @@ async def get_books(
         session=session,
         status=status_,
         author=author,
-        sort_by=sort_by,
-        order=order,
         limit=limit,
         cursor=cursor,
     )
 
-    next_cursor = books[-1].id if books else None
+    next_cursor = books[-1].id if len(books) == limit else None
 
     return BookListResponse(
         items=books,
