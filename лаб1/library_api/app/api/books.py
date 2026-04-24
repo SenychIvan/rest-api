@@ -8,6 +8,7 @@ from app.db.mongo import get_books_collection
 from app.schemas.book import BookCreate, BookOut, BookStatus, BookListResponse
 from app.services.books import BooksService
 from app.repository.books_repo import BooksRepository
+from app.core.security import get_current_user
 
 router = APIRouter(prefix="/books", tags=["books"])
 service = BooksService(BooksRepository())
@@ -16,6 +17,7 @@ service = BooksService(BooksRepository())
 @router.get("", response_model=BookListResponse, status_code=200)
 async def get_books(
     collection: AsyncIOMotorCollection = Depends(get_books_collection),
+    current_user: str = Depends(get_current_user),
     status_: Optional[BookStatus] = Query(default=None, alias="status"),
     author: Optional[str] = Query(default=None),
     sort_by: Optional[str] = Query(default=None, pattern="^(title|year)?$"),
@@ -39,6 +41,7 @@ async def get_books(
 async def get_book_by_id(
     book_id: str,
     collection: AsyncIOMotorCollection = Depends(get_books_collection),
+    current_user: str = Depends(get_current_user),
 ):
     book = await service.get_book(collection, book_id)
     if book is None:
@@ -50,6 +53,7 @@ async def get_book_by_id(
 async def create_book(
     payload: BookCreate,
     collection: AsyncIOMotorCollection = Depends(get_books_collection),
+    current_user: str = Depends(get_current_user),
 ):
     return await service.create_book(collection, payload)
 
@@ -58,6 +62,7 @@ async def create_book(
 async def delete_book(
     book_id: str,
     collection: AsyncIOMotorCollection = Depends(get_books_collection),
+    current_user: str = Depends(get_current_user),
 ):
     await service.delete_book(collection, book_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
