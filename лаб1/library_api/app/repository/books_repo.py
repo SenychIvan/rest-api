@@ -11,7 +11,7 @@ class BooksRepository:
     @staticmethod
     def _serialize(book: dict) -> dict:
         return {
-            "id": str(book["_id"]),
+            "id": (book["_id"]),
             "title": book["title"],
             "author": book["author"],
             "description": book["description"],
