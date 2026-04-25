@@ -40,5 +40,15 @@ services:
     ports:
       - "4010:4010"
 
+  locust:
+    image: locustio/locust
+    container_name: library_locust
+    volumes:
+      - ./:/mnt/locust
+    working_dir: /mnt/locust
+    command: -f locustfile.py
+    ports:
+      - "8089:8089"
+
 volumes:
   mongo_data:
